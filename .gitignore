@@ -1,0 +1,27 @@
+# أسرار ومحليّات — لا تُرفع أبداً
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+
+# كاش مُشتقّ (يُعاد تنزيله عند الحاجة) — لا فائدة من تتبّعه في Git
+data/cache/
+audio/
+out/
+
+# بايثون
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# محرّرات ونظام
+.DS_Store
+.idea/
+.vscode/
+*.log

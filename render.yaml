@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────
+# تعريف خدمة Render لبوت «نور الإسلام» (NoorIslamBot) — Render Blueprint
+#   الاستعمال: New → Blueprint → اربط المستودع (يُقرأ هذا الملف تلقائياً)
+#
+# ⚠️ لا أسرار في هذا الملف إطلاقاً:
+#    القيم السرّية (BOT_TOKEN, WEBHOOK_SECRET, WEBHOOK_BASE_URL) من نوع
+#    "sync: false" أي تُملأ من لوحة Render ولا تُخزَّن في Git.
+#
+# ملاحظات مهمّة:
+#  • Render يضبط PORT تلقائياً، فلا تُعرّفه هنا.
+#  • serviceType=web يلزمه ردّ 200 على المسار الجذر؛ ولا يوجد في المشروع
+#    مسار صحة HTTP (app/main.py وapp/handlers/ غير منفَّذين في هذا الإصدار)،
+#    لذلك لم يُضبط healthCheckPath. أضِفه بعد تنفيذ قشرة الخدمة، مثل:
+#        healthCheckPath: /telegram/webhook
+#  • القرص الدائم (disk) متاح في الخطط المدفوعة عادةً؛ على الخطة المجانية
+#    نظام الملفات زائل، لذا ستفقد data/noor.db وكاش الحديث مع كل إعادة نشر.
+#  • الخطة المجانية تُوقف الخدمة عند عدم الاستعمال (Cold start)؛ هذا مقبول في
+#    وضع webhook لكنه لا يُشغّل الإشعارات المجدولة (DAILY_PUSH) — اتركها false
+#    أو استعمل Cron Job مستقلاً ينبّه نقطة داخلية.
+# ─────────────────────────────────────────────────────────────────────
+services:
+  - type: web
+    name: noor-islam-bot
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.main
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+
+      # وضع التشغيل: webhook هو المناسب للمنصّات التي تُوقظ الخدمة عند الطلب
+      - key: RUN_MODE
+        value: webhook
+      - key: WEBHOOK_PATH
+        value: /telegram/webhook
+
+      # ── أسرار تُملأ من اللوحة (لا تُخزَّن في Git) ──────────────────
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_BASE_URL      # مثال: https://noor-islam-bot.onrender.com
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true        # تولّد Render قيمة عشوائية قوية
+      - key: ADMIN_IDS
+        sync: false
+
+      # ── مسارات التخزين وإعدادات افتراضية غير سرّية ────────────────
+      - key: DB_PATH
+        value: /var/data/noor.db
+      - key: DAILY_PUSH
+        value: "false"
+      - key: DEFAULT_CITY
+        value: الجزائر
+      - key: DEFAULT_COUNTRY
+        value: Algeria
+      - key: DEFAULT_LAT
+        value: "36.7538"
+      - key: DEFAULT_LON
+        value: "3.0588"
+      - key: DEFAULT_METHOD
+        value: "3"
+      - key: DEFAULT_RECITER
+        value: ar.alafasy
+      - key: DEFAULT_TZ
+        value: Africa/Algiers
+
+      # الذكاء الاصطناعي اختياري — اتركه فارغاً ليعمل البوت كاملاً بدونه
+      # (إن أردت تفعيله، أضف المفاتيح من اللوحة بنوع sync: false)
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: LLM_MAX_TOKENS
+        value: "1200"
+      - key: LLM_TEMPERATURE
+        value: "0.2"
+
+    # قرص دائم للحالة (قاعدة البيانات + كاش الحديث). يتطلّب خطة تدعم الأقراص؛
+    # احذف هذا القسم إن كنت على الخطة المجانية واقبل بفقدان الحالة عند النشر.
+    disk:
+      name: noor-data
+      mountPath: /var/data
+      sizeGB: 1

@@ -1,0 +1,34 @@
+{
+  "_note": "حالة بوت نور الإسلام الأصلية قبل تطبيق هوية Zentor (2026-10-06). استعمل هذا الملف للرجوع.",
+  "captured_at": "2026-10-06T14:01Z",
+  "bot": {
+    "id": 8738043484,
+    "username": "NoorIslamSamir2026Bot",
+    "name_before": "نور الاسلام",
+    "name_after": "نور الإسلام"
+  },
+  "name": "نور الإسلام",
+  "description": "🌙 رفيقك اليومي للقرآن والسنة: آيات، أحاديث صحيحة، أذكار، أدعية ومواقيت الصلاة مع ذكر المصادر. للتذكير وليس للإفتاء.",
+  "short_description": "رفيق يومي للآيات والأحاديث والأذكار الموثّقة 🌙",
+  "commands": [
+    { "command": "start", "description": "افتح الصفحة الرئيسية" },
+    { "command": "ayah", "description": "آية مع المرجع" },
+    { "command": "hadith", "description": "حديث مع المرجع" },
+    { "command": "morning", "description": "أذكار الصباح" },
+    { "command": "evening", "description": "أذكار المساء" },
+    { "command": "adhkar", "description": "الأذكار" },
+    { "command": "dua", "description": "دعاء" },
+    { "command": "prayer", "description": "مواقيت الصلاة" },
+    { "command": "tasbih", "description": "المسبحة" },
+    { "command": "subscribe", "description": "اشترك في الإشعارات" },
+    { "command": "unsubscribe", "description": "إلغاء الاشتراك" },
+    { "command": "about", "description": "عن البوت" },
+    { "command": "help", "description": "المساعدة" }
+  ],
+  "webhook": {
+    "url_template": "https://prohandiq.com/maker/files/2b5fe935a68143f8f47311d3c6f44ddf.php?s=7870725334&t=<BOT_TOKEN>&b=7864696545&lang=ar",
+    "host": "prohandiq.com",
+    "note": "الخدمة الخارجية التي كانت تدير البوت. توكن البوت مكشوف لها ⇒ يُنصح بـ/revoke من @BotFather بعد الترحيل.",
+    "restore_command": "python scripts/setup_webhook.py --restore-prohandiq"
+  }
+}

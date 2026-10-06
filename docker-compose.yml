@@ -1,0 +1,34 @@
+# بوت «نور الإسلام» (NoorIslamBot) — خدمة واحدة
+# الاستعمال:
+#   docker compose up -d --build
+#   docker compose logs -f
+#   docker compose exec bot python scripts/healthcheck.py
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: noor-islam-bot:latest
+    container_name: noor-islam-bot
+
+    # كل الإعدادات (وفيه BOT_TOKEN) من .env — لا تُكتب أسرار هنا
+    env_file: .env
+    environment:
+      # غيّره إلى polling إن لم ترغب في استقبال تحديثات webhook
+      RUN_MODE: ${RUN_MODE:-webhook}
+      PORT: ${PORT:-8080}
+
+    # المجلّد الذي يجب أن يبقى: data/noor.db + data/cache/hadith/
+    volumes:
+      - ./data:/app/data
+
+    # منفذ الخدمة (يلزم فقط في وضع webhook)
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+
+    restart: unless-stopped
+
+    # قيود موارد معقولة ونظام ملفات مؤقّت للكتابة
+    tmpfs:
+      - /tmp
+    stop_grace_period: 20s
