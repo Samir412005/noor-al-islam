@@ -21,6 +21,16 @@ def is_admin(user_id: int) -> bool:
     return user_id in settings.admin_ids
 
 
+@router.message(Command("__guardian_probe"))
+async def guardian_probe(message: Message) -> None:
+    """فحص داخلي يستعمله الحارس: يثبت أن المعالجة تعمل ثم يصمت تماماً.
+
+    صُمّم هكذا عن قصد: لا يرسل شيئاً (فلا ضجيج في السجلّ ولا رسائل وهمية)،
+    لكنه يمرّ بكل الطبقات: الويب هوك ← الوسائط ← الموجّه ← المعالج.
+    """
+    return
+
+
 @router.message(Command("stats", "إحصاء"))
 async def cmd_stats(message: Message, user: UserProfile) -> None:
     if not is_admin(message.from_user.id):

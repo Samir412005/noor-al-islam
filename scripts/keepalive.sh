@@ -5,6 +5,15 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 mkdir -p logs
 
+# قفل بالـPID (لا بـflock): flock يبقى محتجزاً بابنٍ يتيم فيمنع الإقلاع للأبد.
+PIDFILE=logs/keepalive.pid
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+  echo "[keepalive] $(date -Is) — نسخة أخرى تعمل؛ خروج." >> logs/keepalive.log
+  exit 0
+fi
+echo $$ > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT INT TERM
+
 INTERVAL=60
 LOG_MAX_BYTES=2000000
 

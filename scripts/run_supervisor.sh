@@ -9,6 +9,15 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 mkdir -p logs
 
+# قفل بالـPID (لا بـflock): flock يبقى محتجزاً بابنٍ يتيم فيمنع الإقلاع للأبد.
+PIDFILE=logs/run_supervisor.pid
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+  echo "[run_supervisor] $(date -Is) — نسخة أخرى تعمل؛ خروج." >> logs/supervisor.log
+  exit 0
+fi
+echo $$ > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT INT TERM
+
 INTERVAL=0.5      # نصف ثانية: أسرع تعافٍ ممكن
 LOG_MAX_BYTES=5000000
 
