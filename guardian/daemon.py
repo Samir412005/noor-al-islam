@@ -22,6 +22,7 @@ from .state import (
     mark_alert,
     mark_fix,
     recent_incidents,
+    record_incident,
     save_state,
     write_heartbeat,
 )
@@ -59,6 +60,16 @@ def run_cycle(cfg: GuardianConfig, *, force_fix: bool = False, verbose: bool = T
             outcome = f"فشل الإصلاح: {type(exc).__name__}"
         mark_fix(state, result.name)
         fixers.log(cfg, f"{result.name} → {outcome}")
+        record_incident(
+            cfg,
+            {
+                "name": result.name,
+                "problem": result.detail,
+                "action": action,
+                "outcome": outcome,
+                "severity": result.severity,
+            },
+        )
         applied.append({"name": result.name, "action": action, "outcome": outcome})
         if verbose:
             print(f"🔧 {result.name}: {outcome}")
