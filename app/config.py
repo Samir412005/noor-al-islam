@@ -83,6 +83,11 @@ class Settings:
     # الإشعارات
     daily_push: bool = field(default_factory=lambda: _get_bool("DAILY_PUSH", False))
 
+    # توفر بلا انقطاع: عمليتان تتقاسمان المنفذ (SO_REUSEPORT) ⇒ إعادة تشغيل
+    # إحداهما لا تُسقط الخدمة. والدور يمنع تكرار الإشعارات المجدولة.
+    reuse_port: bool = field(default_factory=lambda: _get_bool("REUSE_PORT", False))
+    worker_role: str = field(default_factory=lambda: (_get("WORKER_ROLE", "primary").lower() or "primary"))
+
     @property
     def resolved_llm(self) -> tuple[str, str, str]:
         """(base_url, api_key, model) — مع كشف تلقائي لمفاتيح المزوّدين الشائعة.

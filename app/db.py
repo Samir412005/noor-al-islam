@@ -17,6 +17,8 @@ from .models import UserProfile
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
+PRAGMA busy_timeout=8000;   -- عمليتان على نفس الملف: ننتظر بدل أن نُخطئ
+PRAGMA synchronous=NORMAL;  -- أسرع مع WAL وأمن كافٍ
 PRAGMA foreign_keys=ON;
 
 CREATE TABLE IF NOT EXISTS users (

@@ -57,6 +57,30 @@ def bot_alive() -> bool:
     return bool(result.stdout.strip())
 
 
+def serving_workers() -> int:
+    """عدد العمليات التي تخدم على المنفذ فعلاً (دليل التوفّر بلا انقطاع)."""
+    port = os.environ.get("PORT", "8080")
+    result = subprocess.run(["ss", "-ltnp"], capture_output=True, text=True)
+    return sum(1 for line in result.stdout.splitlines() if f":{port}" in line)
+
+
+def keepalive_alive() -> bool:
+    result = subprocess.run(["pgrep", "-f", "keepalive.sh"], capture_output=True, text=True)
+    return bool(result.stdout.strip())
+
+
+def start_keepalive() -> None:
+    subprocess.Popen(
+        ["setsid", "nohup", "bash", str(ROOT / "scripts" / "keepalive.sh")],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+        cwd=str(ROOT),
+        start_new_session=True,
+    )
+    log("أُعيد تشغيل الحراسة الدقيقة (keepalive)")
+
+
 def start_supervisor() -> None:
     subprocess.Popen(
         ["setsid", "nohup", "bash", str(SUPERVISOR)],
@@ -140,6 +164,7 @@ def assert_webhook(token: str, base: str, path: str, secret: str) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description="حارس تشغيل بوت نور الإسلام")
     parser.add_argument("--check", action="store_true", help="فحص فقط بلا إصلاح")
+    parser.add_argument("--quiet", action="store_true", help="لا تطبع شيئاً عند السلامة (للمراقبة الدورية)")
     args = parser.parse_args()
 
     load_env()
@@ -160,6 +185,17 @@ def main() -> int:
             start_supervisor()
     if not bot_alive():
         problems.append("عملية البوت متوقّفة")
+    if not keepalive_alive():
+        problems.append("الحراسة الدقيقة غير مشغّلة")
+        if not args.check:
+            start_keepalive()
+
+    expected_workers = 2 if os.environ.get("REUSE_PORT", "").lower() in {"1", "true", "yes", "on"} else 1
+    current_workers = serving_workers()
+    if current_workers < expected_workers:
+        problems.append(f"عمليات الخدمة {current_workers}/{expected_workers}")
+        if not args.check and not supervisor_alive():
+            start_supervisor()
 
     if base:
         healthy, detail = public_health(base)
@@ -181,10 +217,14 @@ def main() -> int:
 
     if problems:
         log(" | ".join(problems))
-        print("⚠️ " + " | ".join(problems))
+        if "→" not in " ".join(problems):
+            print("⚠️ " + " | ".join(problems))
         return 1 if args.check else 0
 
-    print("✅ كل شيء سليم: المشرف والبوت والويب هوك والعنوان العام")
+    if not args.quiet:
+        print(
+            f"✅ كل شيء سليم: {current_workers} عمليات تخدم · المشرف · الويب هوك · العنوان العام"
+        )
     return 0
 
 

@@ -8,7 +8,7 @@ from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats, BotCommand
 
 from .config import settings
 from .handlers import setup_routers
-from .middlewares import ErrorMiddleware, UserMiddleware
+from .middlewares import ErrorMiddleware, UserMiddleware, timing
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +34,8 @@ def create_dispatcher() -> Dispatcher:
     # الوسيط الخارجي للخطأ يغلّف الجميع، ثم وسيط المستخدم
     dp.message.outer_middleware(ErrorMiddleware())
     dp.callback_query.outer_middleware(ErrorMiddleware())
+    dp.message.outer_middleware(timing)
+    dp.callback_query.outer_middleware(timing)
     dp.message.outer_middleware(UserMiddleware())
     dp.callback_query.outer_middleware(UserMiddleware())
 

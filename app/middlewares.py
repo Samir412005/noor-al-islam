@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
@@ -61,3 +62,51 @@ class ErrorMiddleware(BaseMiddleware):
             except Exception:  # pragma: no cover
                 pass
             return None
+
+
+# حدّ البطء: ما تجاوزه يُسجَّل تحذيراً (للتشخيص المبكّر)
+SLOW_THRESHOLD = 2.0
+NOTICE_THRESHOLD = 0.8
+
+
+class TimingMiddleware(BaseMiddleware):
+    """يقيس زمن معالجة كل تحديث — أساس أيّ تشخيص بطء.
+
+    يُسجَّل التحذير فقط عند تجاوز الحدّ، حتى يبقى السجلّ نظيفاً.
+    """
+
+    def __init__(self, slow: float = SLOW_THRESHOLD, notice: float = NOTICE_THRESHOLD) -> None:
+        self.slow = slow
+        self.notice = notice
+        self.total = 0
+        self.count = 0
+        self.worst = 0.0
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        start = time.perf_counter()
+        try:
+            return await handler(event, data)
+        finally:
+            elapsed = time.perf_counter() - start
+            self.total += elapsed
+            self.count += 1
+            self.worst = max(self.worst, elapsed)
+            label = type(event).__name__
+            if elapsed >= self.slow:
+                log.warning("🐌 بطء: %s استغرق %.2f ثانية", label, elapsed)
+            elif elapsed >= self.notice:
+                log.info("⏱️ %s: %.2f ثانية", label, elapsed)
+            else:
+                log.debug("%s: %.3f ثانية", label, elapsed)
+
+    def stats(self) -> dict[str, float]:
+        average = self.total / self.count if self.count else 0.0
+        return {"count": self.count, "avg": round(average, 3), "worst": round(self.worst, 3)}
+
+
+timing = TimingMiddleware()
