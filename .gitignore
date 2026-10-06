@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+guardian/.env          # أسرار الحارس
 *.db
 *.db-wal
 *.db-shm

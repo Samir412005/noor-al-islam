@@ -6,6 +6,26 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_TARGET = Path("/home/user/.workspace/noor-islam-bot")
+GUARDIAN_ENV_FILE = Path(__file__).resolve().parent / ".env"
+
+
+def load_guardian_env() -> None:
+    """يقرأ guardian/.env (أسرار الحارس: توكن بوت الحارس وإعداداته).
+
+    الفصل مقصود: توكن الحارس لا يُخلط مع .env الخاص بالبوت الهدف،
+    ولا يُرفع إلى Git (مستثنى في .gitignore).
+    """
+    if not GUARDIAN_ENV_FILE.exists():
+        return
+    for raw in GUARDIAN_ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_guardian_env()
 
 
 def _env(name: str, default: str = "") -> str:

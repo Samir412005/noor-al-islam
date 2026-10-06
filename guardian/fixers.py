@@ -83,6 +83,27 @@ def restart_keepalive(cfg: GuardianConfig) -> str:
     return "أُعيد تشغيل الحراسة الدقيقة" if ok else "تعذّر تشغيل الحراسة"
 
 
+def restart_guardian_bot(cfg: GuardianConfig) -> str:
+    """يشغّل بوت الحارس التفاعلي إن كان متوقّفاً (أسرع قناة تنبيه)."""
+    if not cfg.guardian_bot_token:
+        return "لا توكن لبوت الحارس"
+    if _pids_matching("guardian.guardian_bot"):
+        return "بوت الحارس يعمل أصلاً"
+
+    supervisors = _pids_matching("run_guardian_bot")
+    if supervisors:
+        # المشرف يعمل لكن العملية ميتة (تعليق) ⇒ نُعيده ليعاد الإقلاع بنظافة
+        for pid in supervisors:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+        time.sleep(1)
+
+    _spawn(cfg, ["setsid", "nohup", "bash", "scripts/run_guardian_bot.sh"])
+    return "أُعيد تشغيل بوت الحارس" if not supervisors else "أُعيد تشغيل بوت الحارس ومشرفه"
+
+
 def full_restart(cfg: GuardianConfig) -> str:
     """المطرقة الكبرى: إعادة تشغيل نظيفة لكل شيء (بلا إسقاط تحديثات)."""
     killed = _terminate(_pids_matching("app.main"))
@@ -232,6 +253,7 @@ FIXERS = {
     "trim_logs": trim_logs,
     "repair_database": repair_database,
     "disable_llm_on_failure": disable_llm_on_failure,
+    "restart_guardian_bot": restart_guardian_bot,
 }
 
 #: إصلاحات لا تُنفَّذ تلقائياً (تحتاج تدخّل المالك أو يُنبَّه عليها فقط)

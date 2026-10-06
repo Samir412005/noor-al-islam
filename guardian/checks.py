@@ -416,10 +416,22 @@ def check_guardian_bot(cfg: GuardianConfig) -> CheckResult:
     status, data = _http_json(
         f"https://api.telegram.org/bot{cfg.guardian_bot_token}/getMe", timeout=20
     )
-    if status == 200 and data.get("ok"):
-        return CheckResult("guardian_bot", True, f"بوت الحارس يعمل: @{data['result'].get('username')}")
-    return CheckResult("guardian_bot", False, "توكن بوت الحارس غير صالح",
-                       severity=WARNING, fix="check_token")
+    if status != 200 or not data.get("ok"):
+        return CheckResult(
+            "guardian_bot", False, f"توكن بوت الحارس غير صالح (HTTP {status})",
+            severity=WARNING, fix="check_token",
+        )
+    username = data["result"].get("username")
+
+    # التوكن صالح — لكن هل العملية نفسها تعمل؟ (بوت متوقّف = تنبيهات صامتة)
+    running = any("guardian.guardian_bot" in cmd for _pid, cmd in _pid_cmdlines())
+    if not running:
+        return CheckResult(
+            "guardian_bot", False,
+            f"توكن @{username} صالح لكن بوت الحارس **متوقّف** — لن تصلك تنبيهاته",
+            severity=WARNING, fix="restart_guardian_bot",
+        )
+    return CheckResult("guardian_bot", True, f"بوت الحارس يعمل: @{username} (polling)")
 
 
 def run_all(cfg: GuardianConfig, *, include_pipeline: bool | None = None) -> list[CheckResult]:

@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
-# إعادة تشغيل نظيفة لكل شيء: يقتل عمليات المشروع ثم يُقلع المشرف والحراسة الدقيقة.
+# إعادة تشغيل نظيفة لكل شيء: البوت + الحراسة + الحارس + بوت الحارس.
 #   bash scripts/ops_restart.sh          # إعادة تشغيل كاملة
 #   bash scripts/ops_restart.sh --status # عرض الحالة بلا تغيير
 #
-# ملاحظة تقنية: القتل يتمّ داخل بايثون بقراءة /proc (لا بـpkill -f) لأن نمط
+# ملاحظة تقنية مهمّة: القتل يتمّ داخل بايثون بقراءة /proc (لا بـpkill -f) لأن نمط
 # pkill يطابق سطر الأمر نفسه فيقتل الجلسة المُشغِّلة — خطأ تكرّر في هذا المشروع.
 set -u
 cd "$(dirname "$0")/.." || exit 1
-mkdir -p logs
+mkdir -p logs guardian/state
 
-python3 - "$@" <<'PY'
+python3 - "$@" <<'PYEOF'
 import os, signal, subprocess, sys, time
 
-MARKERS = ("app.main", "run_supervisor", "keepalive.sh")
+MARKERS = (
+    "app.main",               # عمليات البوت
+    "run_supervisor",         # مشرف البوت
+    "keepalive.sh",           # الحراسة الدقيقة
+    "guardian.daemon",        # الحارس
+    "run_guardian.sh",        # مشرف الحارس
+    "guardian.guardian_bot",  # بوت الحارس التفاعلي
+    "run_guardian_bot.sh",    # مشرف بوت الحارس
+)
 STATUS_ONLY = "--status" in sys.argv
 
 
 def project_pids() -> list[int]:
     me = os.getpid()
-    found = []
+    found: list[int] = []
     for pid in (p for p in os.listdir("/proc") if p.isdigit()):
         try:
             cmd = open(f"/proc/{pid}/cmdline", "rb").read().decode(errors="ignore").replace("\x00", " ")
@@ -31,17 +39,33 @@ def project_pids() -> list[int]:
     return sorted(found)
 
 
-def listeners() -> list[str]:
+def serving() -> int:
     out = subprocess.run(["ss", "-ltnp"], capture_output=True, text=True).stdout
-    return [line.strip() for line in out.splitlines() if ":8080" in line]
+    return sum(1 for line in out.splitlines() if ":8080" in line)
 
 
-pids = project_pids()
+def alive(path: str) -> int | None:
+    try:
+        pid = int(open(path).read().strip())
+        os.kill(pid, 0)
+        return pid
+    except Exception:
+        return None
+
+
 if STATUS_ONLY:
-    print(f"عمليات المشروع: {len(pids)} {pids}")
-    print(f"مستمعون على 8080: {len(listeners())}")
+    print(f"عمليات المشروع: {len(project_pids())}")
+    print(f"مستمعون على 8080: {serving()}")
+    for label, path in (
+        ("مشرف البوت", "logs/run_supervisor.pid"),
+        ("الحراسة الدقيقة", "logs/keepalive.pid"),
+        ("مشرف الحارس", "logs/run_guardian.pid"),
+    ):
+        pid = alive(path)
+        print(f"{label}: {'يعمل (' + str(pid) + ')' if pid else 'غير مشغّل'}")
     sys.exit(0)
 
+pids = project_pids()
 for pid in pids:
     try:
         os.kill(pid, signal.SIGTERM)
@@ -55,19 +79,44 @@ for stale in project_pids():
         os.kill(stale, signal.SIGKILL)
     except OSError:
         pass
-PY
+PYEOF
 
 setsid nohup bash scripts/run_supervisor.sh >/dev/null 2>&1 &
 setsid nohup bash scripts/keepalive.sh >/dev/null 2>&1 &
-sleep "${WAIT_SECONDS:-18}"
+setsid nohup bash scripts/run_guardian.sh >/dev/null 2>&1 &
+setsid nohup bash scripts/run_guardian_bot.sh >/dev/null 2>&1 &
+sleep "${WAIT_SECONDS:-22}"
 
-python3 - <<'PY'
-import subprocess
+python3 - <<'PYEOF'
+import os, subprocess, time
+
 out = subprocess.run(["ss", "-ltnp"], capture_output=True, text=True).stdout
-lines = [l for l in out.splitlines() if ":8080" in l]
+lines = [line for line in out.splitlines() if ":8080" in line]
 print(f"✅ عمليات تخدم على 8080: {len(lines)}")
-for line in lines:
-    pid = line.split("pid=")[1].split(",")[0] if "pid=" in line else "?"
-    print(f"   pid={pid}")
-PY
+
+
+def alive(path: str):
+    try:
+        pid = int(open(path).read().strip())
+        os.kill(pid, 0)
+        return pid
+    except Exception:
+        return None
+
+
+for label, path in (
+    ("مشرف البوت", "logs/run_supervisor.pid"),
+    ("الحراسة الدقيقة", "logs/keepalive.pid"),
+    ("مشرف الحارس", "logs/run_guardian.pid"),
+):
+    pid = alive(path)
+    print(f"   {label}: {'يعمل (' + str(pid) + ')' if pid else 'غير مشغّل'}")
+
+try:
+    heartbeat = int(open("guardian/state/heartbeat").read().strip())
+    print(f"   نبض الحارس: قبل {int(time.time()) - heartbeat} ثانية")
+except Exception:
+    print("   نبض الحارس: غير متوفّر")
+PYEOF
+
 echo "افحص الآن: bash scripts/ops_status.sh"

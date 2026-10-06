@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Iterable
 
 from aiogram import BaseMiddleware, Bot, Dispatcher, Router
+from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
@@ -545,7 +546,10 @@ async def set_profile(bot: Bot) -> None:
 
 
 async def _run(cfg: GuardianConfig) -> None:
-    bot = Bot(token=cfg.guardian_bot_token, parse_mode=ParseMode.HTML)
+    bot = Bot(
+        token=cfg.guardian_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dp = create_dispatcher(cfg)
     dp.startup.register(set_profile)
 
