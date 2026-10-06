@@ -140,8 +140,10 @@ def main() -> int:
             call(client, "setMyDescription", description=DESCRIPTION)
             call(client, "setMyShortDescription", short_description=SHORT_DESCRIPTION)
             commands = current_commands()
+            # النطاق الافتراضي أيضاً: وإلا بقيت قائمة خدمة سابقة في المجموعات
             call(client, "setMyCommands", commands=commands)
-            print(f"✅ الوصف + الوصف المختصر + {len(commands)} أمراً")
+            call(client, "setMyCommands", commands=commands, scope={"type": "all_private_chats"})
+            print(f"✅ الوصف + الوصف المختصر + {len(commands)} أمراً (نطاقان)")
 
         if args.name or args.all:
             if args.name:

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
+from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats, BotCommandScopeDefault
 
 from .config import settings
 from .handlers import setup_routers
@@ -42,15 +42,18 @@ def create_dispatcher() -> Dispatcher:
 
 
 async def set_commands(bot: Bot) -> None:
-    """يضبط قائمة الأوامر في واجهة تيليجرام (مع السقوط الصامت عند الفشل)."""
-    try:
-        await bot.set_my_commands(
-            [BotCommand(command=name, description=desc) for name, desc in COMMANDS],
-            scope=BotCommandScopeAllPrivateChats(),
-        )
-        log.info("تم تحديث قائمة الأوامر (%d أمراً)", len(COMMANDS))
-    except Exception as exc:  # pragma: no cover
-        log.warning("set_my_commands failed: %s", exc)
+    """يضبط قائمة الأوامر في واجهة تيليجرام.
+
+    نضبط **النطاق الافتراضي** أيضاً، وإلا بقيت قائمة خدمة سابقة ظاهرة في المجموعات
+    وفي أي سياق غير المحادثات الخاصة (تسبّب أوامر لا يخدمها البوت).
+    """
+    commands = [BotCommand(command=name, description=desc) for name, desc in COMMANDS]
+    for label, scope in (("الافتراضي", BotCommandScopeDefault()), ("الخاص", BotCommandScopeAllPrivateChats())):
+        try:
+            await bot.set_my_commands(commands, scope=scope)
+            log.info("تم تحديث قائمة الأوامر (%d أمراً) — نطاق %s", len(COMMANDS), label)
+        except Exception as exc:  # pragma: no cover
+            log.warning("set_my_commands (%s) failed: %s", label, exc)
 
 
 async def set_profile(bot: Bot) -> None:
