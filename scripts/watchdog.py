@@ -15,8 +15,11 @@ import sys
 import time
 from pathlib import Path
 
+import re
+
 import httpx
 
+_M = re.MULTILINE
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 LOG = ROOT / "logs" / "bot.log"
@@ -66,6 +69,39 @@ def start_supervisor() -> None:
     log("أُعيد تشغيل المشرف")
 
 
+def e2b_public_url() -> str | None:
+    """يحسب العنوان العام الحالي من بيئة الساندبوكس (E2B).
+
+    إذا أُعيد إنشاء الساندبوكس يتغيّر العنوان؛ فنكتشفه ونحدّث .env والويب هوك.
+    """
+    sandbox_id = os.environ.get("E2B_SANDBOX_ID", "").strip()
+    port = os.environ.get("PORT", "").strip() or "8080"
+    if not sandbox_id:
+        return None
+    return f"https://{port}-{sandbox_id}.e2b.dev"
+
+
+def sync_public_url() -> str | None:
+    """يزامن WEBHOOK_BASE_URL مع العنوان الفعلي. يعيد التغيير إن حدث."""
+    current = os.environ.get("WEBHOOK_BASE_URL", "").rstrip("/")
+    actual = e2b_public_url()
+    if not actual or actual == current:
+        return None
+
+    env_path = ROOT / ".env"
+    text = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    import re as _re
+
+    if _re.search(r"^WEBHOOK_BASE_URL=.*$", text, _M):
+        text = _re.sub(r"^WEBHOOK_BASE_URL=.*$", f"WEBHOOK_BASE_URL={actual}", text, flags=_M)
+    else:
+        text += f"\nWEBHOOK_BASE_URL={actual}\n"
+    env_path.write_text(text, encoding="utf-8")
+    os.environ["WEBHOOK_BASE_URL"] = actual
+    log(f"تغيّر العنوان العام: {current or '(فارغ)'} → {actual}")
+    return actual
+
+
 def public_health(base: str) -> tuple[bool, str]:
     """يتحقّق أن البوت منشور فعلاً على الإنترنت (لا محلياً فقط)."""
     if not base:
@@ -108,11 +144,15 @@ def main() -> int:
 
     load_env()
     token = os.environ.get("BOT_TOKEN", "")
-    base = os.environ.get("WEBHOOK_BASE_URL", "")
     path = os.environ.get("WEBHOOK_PATH", "/telegram/webhook")
     secret = os.environ.get("WEBHOOK_SECRET", "")
 
     problems: list[str] = []
+
+    changed = sync_public_url()
+    if changed:
+        problems.append(f"تغيّر العنوان العام ⇒ {changed}")
+    base = os.environ.get("WEBHOOK_BASE_URL", "")
 
     if not supervisor_alive():
         problems.append("المشرف غير مشغّل")
