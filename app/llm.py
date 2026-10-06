@@ -35,9 +35,10 @@ class LLM:
         max_tokens: int | None = None,
         temperature: float | None = None,
     ) -> None:
-        self.base_url = (base_url if base_url is not None else settings.llm_base_url).rstrip("/")
-        self.api_key = api_key if api_key is not None else settings.llm_api_key
-        self.model = model if model is not None else settings.llm_model
+        resolved_base, resolved_key, resolved_model = settings.resolved_llm
+        self.base_url = (base_url if base_url is not None else resolved_base).rstrip("/")
+        self.api_key = api_key if api_key is not None else resolved_key
+        self.model = model if model is not None else resolved_model
         self.max_tokens = max_tokens or settings.llm_max_tokens
         self.temperature = (
             temperature if temperature is not None else settings.llm_temperature

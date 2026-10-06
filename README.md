@@ -257,6 +257,27 @@ ag:<agent>:<action>[:arg1[:arg2…]]
 `app/router.py`) مذكورة أعلاه في «جدول الوكلاء». وتُسجَّل القائمة في تيليجرام تلقائياً
 عند الإقلاع عبر `set_my_commands` في `app/bot.py` (انظر «قائمة الأوامر المسجّلة في تيليجرام»)، فلا حاجة لتسجيل يدوي.
 
+### تفعيل الذكاء بأمر واحد
+
+```bash
+python scripts/enable_llm.py --status                      # الحالة الحالية
+python scripts/enable_llm.py --provider groq --key gsk_...  # أو openrouter / openai / gemini / ollama
+python scripts/enable_llm.py --disable                     # إرجاع البوت للبحث المباشر
+```
+
+السكربت يكتب الإعداد في `.env` (بصلاحيات 600، ولا يطبع المفتاح)، **يختبر النموذج فعلياً**
+قبل الحفظ، ثم يعيد تشغيل البوت ويتحقّق بالحارس. وإن وُجد `GROQ_API_KEY` أو
+`OPENROUTER_API_KEY` أو `OPENAI_API_KEY` أو `GEMINI_API_KEY` في بيئة التشغيل،
+يكتشفه البوت تلقائياً بلا أي تعديل ملفات.
+
+### نقطة الفحص الصحّي
+
+البوت ينشر `GET /health` (بلا أسرار) على نفس مضيف الويب هوك:
+
+```bash
+curl -s https://<مضيفك>/health      # {"status":"ok","service":"noor-islam-bot",...}
+```
+
 ## التشغيل المستمر والمراقبة الذاتية
 
 ثلاثة أدوات تجعل التشغيل بلا تدخّل يدوي:
@@ -345,7 +366,7 @@ noor-islam-bot/
 │   ├── setup_webhook.py   # setWebhook / deleteWebhook / getWebhookInfo
 │   ├── smoke.py           # اختبار دخاني (يقبل --offline)
 │   └── healthcheck.py     # فحص البيانات والذاكرة وgetMe
-├── tests/                 # 220 اختباراً بلا شبكة
+├── tests/                 # 230 اختباراً بلا شبكة
 ├── pytest.ini             # asyncio_mode=auto وtestpaths=tests
 ├── docs/ARCHITECTURE.md  docs/DEPLOY.md
 ├── Dockerfile  docker-compose.yml  Procfile  render.yaml
@@ -358,7 +379,7 @@ noor-islam-bot/
 python -m pytest -q
 ```
 
-النتيجة الفعلية في هذا الإصدار: **220 اختبارات ناجحة** (`pytest.ini` يضبط
+النتيجة الفعلية في هذا الإصدار: **230 اختباراً ناجحاً** (`pytest.ini` يضبط
 `asyncio_mode=auto` و`testpaths=tests`)، موزّعة هكذا: `test_hadith.py` ٤٨،
 `test_router.py` ٢٩، `test_guardrails.py` ٢٧، `test_prayer.py` ٢٤، `test_quran.py` ١٦،
 `test_scholar.py` ١٦، `test_adhkar.py` ١٤، `test_core.py` ١٣، `test_db.py` ٩،

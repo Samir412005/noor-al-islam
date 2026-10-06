@@ -59,9 +59,30 @@ async def run_polling(bot: Bot, dp: Dispatcher, scheduler_task: asyncio.Task | N
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
-async def run_webhook(bot: Bot, dp: Dispatcher) -> None:
+def build_web_app(dp: Dispatcher, bot: Bot) -> "web.Application":
+    """يبني تطبيق aiohttp: نقطة الويب هوك + فحص صحّة عامّ."""
     from aiohttp import web
     from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+    app = web.Application()
+
+    async def health(_request):
+        """نقطة فحص عامّة (بلا أسرار) — يستعملها الحارس للتحقّق من الوصول من الخارج."""
+        return web.json_response(
+            {"status": "ok", "service": "noor-islam-bot", "updates": "webhook"}
+        )
+
+    app.router.add_get("/health", health)
+    handler = SimpleRequestHandler(
+        dispatcher=dp, bot=bot, secret_token=settings.webhook_secret or None
+    )
+    handler.register(app, path=settings.webhook_path)
+    setup_application(app, dp, bot=bot)
+    return app
+
+
+async def run_webhook(bot: Bot, dp: Dispatcher) -> None:
+    from aiohttp import web
 
     logging.info("▶️ تشغيل البوت بوضع webhook على %s", settings.webhook_url)
     await bot.set_webhook(
@@ -71,13 +92,7 @@ async def run_webhook(bot: Bot, dp: Dispatcher) -> None:
         max_connections=40,
     )
 
-    app = web.Application()
-    handler = SimpleRequestHandler(
-        dispatcher=dp, bot=bot, secret_token=settings.webhook_secret or None
-    )
-    handler.register(app, path=settings.webhook_path)
-    setup_application(app, dp, bot=bot)
-
+    app = build_web_app(dp, bot)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, host="0.0.0.0", port=settings.port)
@@ -100,8 +115,8 @@ async def main() -> None:
         logging.info("🤖 @%s (%s) — LLM: %s", me.username, me.first_name,
                      "مفعّل" if settings.llm_enabled else "غير مفعّل")
 
-        if settings.daily_push:
-            scheduler_task = asyncio.create_task(run_scheduler(bot), name="daily-push")
+        # الحلقة تعمل دائماً: القرار لكل مستخدم (daily_push) وليس عامّاً
+        scheduler_task = asyncio.create_task(run_scheduler(bot), name="daily-push")
 
         if settings.run_mode == "webhook":
             await run_webhook(bot, dp)

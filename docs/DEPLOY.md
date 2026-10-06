@@ -23,7 +23,7 @@ python scripts/smoke.py             # ٣) نفس الحالات عبر الشب�
 ```
 
 - `pytest` يقرأ `asyncio_mode=auto` و`testpaths=tests` من `pytest.ini`؛ والعدد الحالي
-  **220 اختبارات**، كلها بلا شبكة (تحجب عميل HTTP بالحقن).
+  **230 اختباراً**، كلها بلا شبكة (تحجب عميل HTTP بالحقن).
 - `smoke.py --offline` يُبطل الوصول إلى خدمات القرآن/الحديث/الأذكار بالحقن ويطبع
   «النتيجة: N/N»؛ و`smoke.py` بلا `--offline` يمرّر الحالات نفسها عبر الشبكة ويحتاج
   وصولاً إلى `api.alquran.cloud` و`api.aladhan.com` و`cdn.jsdelivr.net`.

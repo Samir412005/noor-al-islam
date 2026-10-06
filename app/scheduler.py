@@ -1,7 +1,11 @@
 """الإشعارات المجدولة: أذكار الصباح والمساء، آية اليوم، ومواقيت اليوم.
 
-يُشترط لتشغيلها: `DAILY_PUSH=true` + عملية دائمة (polling أو webhook بلا نوم).
-تُمنع التكرار بجدول `push_state` في قاعدة البيانات.
+الحلقة تعمل دائماً (تكلفتها سطور سجلّ كل دقيقة) والقرار لكل مستخدم على حدة:
+تُرسل لمن فعّل `daily_push` في إعداداته فقط. و`DAILY_PUSH` في البيئة تعني
+«هل الإشعارات مفعّلة افتراضياً للمستخدم الجديد؟».
+
+تُمنع التكرار بجدول `push_state`، وتُطوى الإشعارات التي فاتتها نافذتها (٤٥ دقيقة).
+يجب أن تكون العملية دائمة (polling أو webhook) لتصل الإشعارات.
 """
 from __future__ import annotations
 
@@ -111,10 +115,11 @@ async def _send_daily(bot: Bot) -> None:
 
 async def run_scheduler(bot: Bot) -> None:
     """حلقة دائمة — تُلغى عند إيقاف البوت."""
-    if not settings.daily_push:
-        log.info("الإشعارات المجدولة معطّلة (DAILY_PUSH=false)")
-        return
-    log.info("بدأت حلقة الإشعارات المجدولة (كل %d ثانية)", CHECK_INTERVAL)
+    log.info(
+        "بدأت حلقة الإشعارات المجدولة (كل %d ثانية) — الافتراضي للمستخدم الجديد: %s",
+        CHECK_INTERVAL,
+        "مفعّل" if settings.daily_push else "موقوف",
+    )
     while True:
         try:
             await _send_daily(bot)

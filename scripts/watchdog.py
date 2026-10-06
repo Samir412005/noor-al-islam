@@ -66,6 +66,19 @@ def start_supervisor() -> None:
     log("أُعيد تشغيل المشرف")
 
 
+def public_health(base: str) -> tuple[bool, str]:
+    """يتحقّق أن البوت منشور فعلاً على الإنترنت (لا محلياً فقط)."""
+    if not base:
+        return False, "WEBHOOK_BASE_URL غير مضبوط"
+    try:
+        response = httpx.get(f"{base.rstrip('/')}/health", timeout=15.0)
+        if response.status_code == 200 and response.json().get("status") == "ok":
+            return True, "النقطة العامّة تستجيب"
+        return False, f"ردّ غير متوقّع: HTTP {response.status_code}"
+    except httpx.HTTPError as exc:
+        return False, f"العنوان العام لا يستجيب: {type(exc).__name__}"
+
+
 def webhook_state(token: str) -> tuple[str, str | None]:
     response = httpx.get(
         f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=20.0
@@ -108,6 +121,11 @@ def main() -> int:
     if not bot_alive():
         problems.append("عملية البوت متوقّفة")
 
+    if base:
+        healthy, detail = public_health(base)
+        if not healthy:
+            problems.append(detail)
+
     if token and base:
         try:
             url, error = webhook_state(token)
@@ -126,7 +144,7 @@ def main() -> int:
         print("⚠️ " + " | ".join(problems))
         return 1 if args.check else 0
 
-    print("✅ كل شيء سليم: المشرف والبوت والويب هوك")
+    print("✅ كل شيء سليم: المشرف والبوت والويب هوك والعنوان العام")
     return 0
 
 

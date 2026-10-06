@@ -84,14 +84,39 @@ class Settings:
     daily_push: bool = field(default_factory=lambda: _get_bool("DAILY_PUSH", False))
 
     @property
+    def resolved_llm(self) -> tuple[str, str, str]:
+        """(base_url, api_key, model) — مع كشف تلقائي لمفاتيح المزوّدين الشائعة.
+
+        هكذا يكفي أن يوجد OPENROUTER_API_KEY أو GROQ_API_KEY في البيئة ليعمل
+        وكيل العلم بلا أي تعديل ملفات.
+        """
+        if self.llm_base_url and self.llm_model:
+            return self.llm_base_url, self.llm_api_key, self.llm_model
+
+        for env_key, base_url, model in (
+            ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free"),
+            ("GROQ_API_KEY", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+            ("OPENAI_API_KEY", "https://api.openai.com/v1", "gpt-4o-mini"),
+            ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.0-flash"),
+        ):
+            key = _get(env_key)
+            if key:
+                return base_url, key, model
+        return self.llm_base_url, self.llm_api_key, self.llm_model
+
+    @property
     def llm_enabled(self) -> bool:
-        """LLM متاح إذا عُرف العنوان والنموذج، و(مفتاح أو عنوان محلي)."""
-        if not (self.llm_base_url and self.llm_model):
+        """LLM متاح إذا عُرف العنوان والنموذج، و(مفتاح أو عنوان محلي).
+
+        يعتمد على `resolved_llm` حتى يعمل الكشف التلقائي عن مفاتيح المزوّدين.
+        """
+        base_url, api_key, model = self.resolved_llm
+        if not (base_url and model):
             return False
-        if self.llm_api_key:
+        if api_key:
             return True
         local = ("127.0.0.1", "localhost", "0.0.0.0", "host.docker.internal")
-        return any(h in self.llm_base_url for h in local)
+        return any(host in base_url for host in local)
 
     @property
     def webhook_url(self) -> str:
